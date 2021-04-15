@@ -15,7 +15,7 @@ import (
 )
 
 func KonulariGettir(konuId int) []int {
-	url := fmt.Sprintf("http://islamilimleri.com/Ktphn/Kitablar/05/001/Turkce/%02d/000.htm", konuId)
+	url := fmt.Sprintf("http://islamilimleri.com/Ktphn/Kitablar/05/045/Turkce/%02d/000.htm", konuId)
 	resp, err := http.Get(url)
 	if err != nil {
 		log.Fatal(err)
@@ -24,7 +24,6 @@ func KonulariGettir(konuId int) []int {
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		log.Fatalf("status code error: %d %s", resp.StatusCode, resp.Status)
-
 	}
 
 	//charset := detectContentCharset(resp.Body)
@@ -32,7 +31,6 @@ func KonulariGettir(konuId int) []int {
 	if err != nil {
 		// handler error
 	}
-
 	doc, err := goquery.NewDocumentFromReader(utfBody)
 	if err != nil {
 		log.Fatal(err)
@@ -51,8 +49,8 @@ func KonulariGettir(konuId int) []int {
 	return m
 }
 
-func ElemanleriGettir() {
-	resp, err := http.Get("http://islamilimleri.com/Ktphn/Kitablar/05/001/Turkce/04/060.htm")
+/*func ElemanleriGettir() {
+	resp, err := http.Get("http://islamilimleri.com/Ktphn/Kitablar/05/004/Turkce/04/060.htm")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -104,17 +102,17 @@ func ElemanleriGettir() {
 		fmt.Println("---")
 	})
 
-	/*metin:=doc.Find("td[valign=top]").Text()
+	metin:=doc.Find("td[valign=top]").Text()
 	fmt.Println(metin)
 	doc.Find("#icerik").Each(func(i int, selection *goquery.Selection) {
 		fmt.Println(selection.Text())
 	})
 	metin=doc.Find("#icerik").Text()
-	fmt.Println(metin)*/
-}
+	fmt.Println(metin)
+}*/
 
 func verileriCek(id int, babNo int) Hadis {
-	url := fmt.Sprintf("http://islamilimleri.com/Ktphn/Kitablar/05/001/Turkce/%02d/%03d.htm", id, babNo)
+	url := fmt.Sprintf("http://islamilimleri.com/Ktphn/Kitablar/05/045/Turkce/%02d/%03d.htm", id, babNo)
 	resp, err := http.Get(url)
 	if err != nil {
 		log.Fatal(err)
@@ -193,13 +191,15 @@ func verileriCek(id int, babNo int) Hadis {
 			MetinTrim = strings.ReplaceAll(MetinTrim, "''", "\"")
 			MetinTrim = strings.ReplaceAll(MetinTrim, "_", "")
 			MetinTrim = strings.ReplaceAll(MetinTrim, "        ", " ")
+			MetinTrim = strings.ReplaceAll(MetinTrim, "  ", " ")
 			MetinTrim = strings.ReplaceAll(MetinTrim, "(=", "(")
 			MetinTrim = strings.ReplaceAll(MetinTrim, ">=", ">")
 			MetinTrim = strings.ReplaceAll(MetinTrim, "( =", "(")
-			MetinTrim = strings.ReplaceAll(MetinTrim, ",", "")
+			//MetinTrim = strings.ReplaceAll(MetinTrim, ",", "")
 			MetinTrim = strings.ReplaceAll(MetinTrim, "„", "")
 			MetinTrim = strings.ReplaceAll(MetinTrim, "|b|", "<b>")
 			MetinTrim = strings.ReplaceAll(MetinTrim, "|/b|", "</b>")
+			MetinTrim = strings.ReplaceAll(MetinTrim, "<b></b>", " ")
 			metin = append(metin, MetinTrim)
 		})
 
@@ -208,7 +208,7 @@ func verileriCek(id int, babNo int) Hadis {
 	metinGetir("h3")
 	metinGetir("p")
 	hadis := Hadis{
-		Kitap:  "SAHÎH-İ BUHÂRÎ",
+		Kitap:  "RİYÂZU’S-SÂLİHÎN",
 		Konu:   Baslık,
 		Numara: babNo,
 		Metin:  metin,
@@ -218,7 +218,7 @@ func verileriCek(id int, babNo int) Hadis {
 
 func main() {
 	var hadisler []Hadis
-	for i := 1; i < 99; i++ {
+	for i := 1; i < 2; i++ {
 		konuId := KonulariGettir(i)
 		for _, val := range konuId {
 			hadisler = append(hadisler, verileriCek(i, val))
@@ -230,7 +230,7 @@ func main() {
 	hadislerJson = bytes.Replace(hadislerJson, []byte("\\u003e"), []byte(">"), -1)
 	hadislerJson = bytes.Replace(hadislerJson, []byte("\\u0026"), []byte("&"), -1)
 
-	ioutil.WriteFile("hadisler.json", hadislerJson, 0644)
+	ioutil.WriteFile("40hadis.json", hadislerJson, 0644)
 
 	fmt.Println(len(hadisler))
 }
