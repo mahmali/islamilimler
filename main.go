@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
@@ -50,6 +51,68 @@ func KonulariGettir(konuId int) map[int]int {
 	return m
 }
 
+func ElemanleriGettir() {
+	resp, err := http.Get("http://islamilimleri.com/Ktphn/Kitablar/05/001/Turkce/04/060.htm")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		log.Fatalf("status code error: %d %s", resp.StatusCode, resp.Status)
+
+	}
+
+	data, _ := ioutil.ReadAll(resp.Body)
+	yeni := make([]byte, len(data)*2)
+	iconv.Convert(data, yeni, "windows-1254", "utf-8")
+	yepyeni := bytes.TrimFunc(yeni, func(r rune) bool {
+		return r == 0
+	})
+	var sb strings.Builder
+	var yepYeniRune = []rune(string(yepyeni))
+	pkapanmali := false
+
+	for i, harf := range yepYeniRune {
+
+		if harf == '<' {
+			if yepYeniRune[i+1] == 'p' {
+				pkapanmali = true
+			}
+			if yepYeniRune[i+1] == '/' && yepYeniRune[i+2] == 'p' && yepYeniRune[i+3] == '>' {
+				pkapanmali = false
+			}
+
+			if pkapanmali && yepYeniRune[i+1] == '/' && yepYeniRune[i+2] == 't' && yepYeniRune[i+3] == 'd' && yepYeniRune[i+4] == '>' {
+				sb.WriteString("</p>")
+				pkapanmali = false
+			}
+		}
+
+		sb.WriteRune(harf)
+
+	}
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(sb.String()))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	doc.Find("#icerik div table tr td[valign=top] p").Each(func(i int, selection *goquery.Selection) {
+		fmt.Println(i, "----")
+		fmt.Println(selection.Html())
+		fmt.Println("---")
+	})
+
+	/*metin:=doc.Find("td[valign=top]").Text()
+	fmt.Println(metin)
+	doc.Find("#icerik").Each(func(i int, selection *goquery.Selection) {
+		fmt.Println(selection.Text())
+	})
+	metin=doc.Find("#icerik").Text()
+	fmt.Println(metin)*/
+}
+
 func verileriCek(id int, babNo int) Hadis {
 	url := fmt.Sprintf("http://islamilimleri.com/Ktphn/Kitablar/05/001/Turkce/%02d/%03d.htm", id, babNo)
 	resp, err := http.Get(url)
@@ -63,12 +126,37 @@ func verileriCek(id int, babNo int) Hadis {
 
 	}
 
-	utfBody, err := iconv.NewReader(resp.Body, "windows-1254", "utf-8")
-	if err != nil {
-		fmt.Println(err.Error())
+	data, _ := ioutil.ReadAll(resp.Body)
+	yeni := make([]byte, len(data)*2)
+	iconv.Convert(data, yeni, "windows-1254", "utf-8")
+	yepyeni := bytes.TrimFunc(yeni, func(r rune) bool {
+		return r == 0
+	})
+	var sb strings.Builder
+	var yepYeniRune = []rune(string(yepyeni))
+	pkapanmali := false
+
+	for i, harf := range yepYeniRune {
+
+		if harf == '<' {
+			if yepYeniRune[i+1] == 'p' {
+				pkapanmali = true
+			}
+			if yepYeniRune[i+1] == '/' && yepYeniRune[i+2] == 'p' && yepYeniRune[i+3] == '>' {
+				pkapanmali = false
+			}
+
+			if pkapanmali && yepYeniRune[i+1] == '/' && yepYeniRune[i+2] == 't' && yepYeniRune[i+3] == 'd' && yepYeniRune[i+4] == '>' {
+				sb.WriteString("</p>")
+				pkapanmali = false
+			}
+		}
+
+		sb.WriteRune(harf)
+
 	}
 
-	doc, err := goquery.NewDocumentFromReader(utfBody)
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(sb.String()))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -83,17 +171,40 @@ func verileriCek(id int, babNo int) Hadis {
 		return secim
 	}
 	Baslık := BaslıkBul("CD71")
-	metin := doc.Find("td[valign=top]").Text()
-	metin = strings.TrimSuffix(metin, "\n")
-	metin = strings.TrimSpace(metin)
-	metin = strings.ReplaceAll(metin, "\n", "")
-	metin = strings.ReplaceAll(metin, "\t", "")
-	metin = strings.ReplaceAll(metin, "\"", "")
+	var metin []string
+	var ilkHtml string
+	var html []string
+
+	doc.Find("td[valign=top] b ").Each(func(i int, selection *goquery.Selection) {
+		ilkHtml, _ = selection.Html()
+		ilkHtml = strings.ReplaceAll(ilkHtml, "\u003c", "<")
+		ilkHtml = strings.ReplaceAll(ilkHtml, "\u003e", ">")
+		ilkHtml = strings.ReplaceAll(ilkHtml, "\u0026#34", "")
+		ilkHtml = strings.ReplaceAll(ilkHtml, "\n", "")
+		ilkHtml = strings.ReplaceAll(ilkHtml, "\t", "")
+		html = append(html, ilkHtml)
+	})
+	doc.Find("td[valign=top] Br ").Each(func(i int, selection *goquery.Selection) {
+		ilkHtml, _ = selection.Html()
+		ilkHtml = strings.ReplaceAll(ilkHtml, "\\u0026#34", "")
+		ilkHtml = strings.ReplaceAll(ilkHtml, "\n", "")
+		ilkHtml = strings.ReplaceAll(ilkHtml, "\t", "")
+		html = append(html, ilkHtml)
+	})
+	doc.Find("#icerik div table tr td[valign=top] p").Each(func(i int, selection *goquery.Selection) {
+		MetinTrim := strings.TrimSpace(selection.Text())
+		MetinTrim = strings.ReplaceAll(MetinTrim, "\n", "")
+		MetinTrim = strings.ReplaceAll(MetinTrim, "\t", "")
+		MetinTrim = strings.ReplaceAll(MetinTrim, "\"", "")
+		metin = append(metin, MetinTrim)
+
+	})
 
 	hadis := Hadis{
-		Konu:   Baslık,
-		Numara: babNo,
-		Metin:  metin,
+		Konu:    Baslık,
+		Numara:  babNo,
+		Metin:   metin,
+		HtmlTag: html,
 	}
 	return hadis
 }
