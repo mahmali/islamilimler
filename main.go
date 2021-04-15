@@ -177,17 +177,26 @@ func verileriCek(id int, babNo int) Hadis {
 	Baslık := BaslıkBul("CD71")
 	var metin []string
 
-	doc.Find("#icerik div table tr td[valign=top]").Each(func(i int, selection *goquery.Selection) {
-		MetinTrim := strings.TrimSpace(selection.Text())
-		MetinTrim = strings.ReplaceAll(MetinTrim, "\n", "")
-		MetinTrim = strings.ReplaceAll(MetinTrim, "\t", "")
-		MetinTrim = strings.ReplaceAll(MetinTrim, "\"", "")
-		MetinTrim = strings.ReplaceAll(MetinTrim, "|b|", "<b>")
-		MetinTrim = strings.ReplaceAll(MetinTrim, "|/b|", "</b>")
-		metin = append(metin, MetinTrim)
-	})
+	metinGetir := func(aranacak string) {
+		doc.Find(fmt.Sprintf("#icerik div table tr td[valign=top] %s", aranacak)).Each(func(i int, selection *goquery.Selection) {
+			hammetin := selection.Text()
+			MetinTrim := strings.TrimSpace(hammetin)
+			MetinTrim = strings.ReplaceAll(MetinTrim, "\n", "")
+			MetinTrim = strings.ReplaceAll(MetinTrim, "\t", "")
+			MetinTrim = strings.ReplaceAll(MetinTrim, "\"", "")
+			MetinTrim = strings.ReplaceAll(MetinTrim, "...", "")
+			MetinTrim = strings.ReplaceAll(MetinTrim, "…", "")
+			MetinTrim = strings.ReplaceAll(MetinTrim, "|b|", "<b>")
+			MetinTrim = strings.ReplaceAll(MetinTrim, "|/b|", "</b>")
+			metin = append(metin, MetinTrim)
+		})
 
+	}
+
+	metinGetir("h3")
+	metinGetir("p")
 	hadis := Hadis{
+		Kitap:  "SAHÎH-İ BUHÂRÎ",
 		Konu:   Baslık,
 		Numara: babNo,
 		Metin:  metin,
@@ -245,19 +254,13 @@ func main() {
 			hadisler = append(hadisler, verileriCek(i, val))
 		}
 	}
-	hadislerJson, _ := json.Marshal(&hadisler)
+	hadislerJson, _ := json.MarshalIndent(&hadisler, "", " ")
 
 	hadislerJson = bytes.Replace(hadislerJson, []byte("\\u003c"), []byte("<"), -1)
 	hadislerJson = bytes.Replace(hadislerJson, []byte("\\u003e"), []byte(">"), -1)
 	hadislerJson = bytes.Replace(hadislerJson, []byte("\\u0026"), []byte("&"), -1)
 
 	ioutil.WriteFile("hadisler.json", hadislerJson, 0644)
-
-	/*	if data, err := json.MarshalIndent(hadisler, " ", " "); err != nil {
-			log.Fatal(err)
-		} else {
-			ioutil.WriteFile("hadisler.json", data, 0644)
-		}*/
 
 	fmt.Println(len(hadisler))
 }
