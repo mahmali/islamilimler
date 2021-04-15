@@ -14,7 +14,7 @@ import (
 	"strings"
 )
 
-func KonulariGettir(konuId int) map[int]int {
+func KonulariGettir(konuId int) []int {
 	url := fmt.Sprintf("http://islamilimleri.com/Ktphn/Kitablar/05/001/Turkce/%02d/000.htm", konuId)
 	resp, err := http.Get(url)
 	if err != nil {
@@ -37,7 +37,7 @@ func KonulariGettir(konuId int) map[int]int {
 	if err != nil {
 		log.Fatal(err)
 	}
-	m := make(map[int]int)
+	var m []int
 	doc.Find("select[name=CD39] option").Each(func(i int, selection *goquery.Selection) {
 		fmt.Println(selection.Text())
 		if selection.Text() != "BAB" {
@@ -45,7 +45,7 @@ func KonulariGettir(konuId int) map[int]int {
 			if err != nil {
 				fmt.Println(err)
 			}
-			m[i] = deger
+			m = append(m, deger)
 		}
 	})
 	return m
@@ -119,7 +119,7 @@ func verileriCek(id int, babNo int) Hadis {
 	if err != nil {
 		log.Fatal(err)
 	}
-
+	fmt.Println(url)
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		log.Fatalf("status code error: %d %s", resp.StatusCode, resp.Status)
@@ -139,6 +139,12 @@ func verileriCek(id int, babNo int) Hadis {
 	for i, harf := range yepYeniRune {
 
 		if harf == '<' {
+			if yepYeniRune[i+1] == 'b' {
+				sb.WriteString("|b|")
+			}
+			if yepYeniRune[i+1] == '/' && yepYeniRune[i+2] == 'b' && yepYeniRune[i+3] == '>' {
+				sb.WriteString("|/b|")
+			}
 			if yepYeniRune[i+1] == 'p' {
 				pkapanmali = true
 			}
@@ -151,9 +157,7 @@ func verileriCek(id int, babNo int) Hadis {
 				pkapanmali = false
 			}
 		}
-
 		sb.WriteRune(harf)
-
 	}
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(sb.String()))
@@ -172,39 +176,19 @@ func verileriCek(id int, babNo int) Hadis {
 	}
 	Baslık := BaslıkBul("CD71")
 	var metin []string
-	var ilkHtml string
-	var html []string
 
-	doc.Find("td[valign=top] b ").Each(func(i int, selection *goquery.Selection) {
-		ilkHtml, _ = selection.Html()
-		ilkHtml = strings.ReplaceAll(ilkHtml, "\u003c", "<")
-		ilkHtml = strings.ReplaceAll(ilkHtml, "\u003e", ">")
-		ilkHtml = strings.ReplaceAll(ilkHtml, "\u0026#34", "")
-		ilkHtml = strings.ReplaceAll(ilkHtml, "\n", "")
-		ilkHtml = strings.ReplaceAll(ilkHtml, "\t", "")
-		html = append(html, ilkHtml)
-	})
-	doc.Find("td[valign=top] Br ").Each(func(i int, selection *goquery.Selection) {
-		ilkHtml, _ = selection.Html()
-		ilkHtml = strings.ReplaceAll(ilkHtml, "\\u0026#34", "")
-		ilkHtml = strings.ReplaceAll(ilkHtml, "\n", "")
-		ilkHtml = strings.ReplaceAll(ilkHtml, "\t", "")
-		html = append(html, ilkHtml)
-	})
-	doc.Find("#icerik div table tr td[valign=top] p").Each(func(i int, selection *goquery.Selection) {
+	doc.Find("#icerik div table tr td[valign=top]").Each(func(i int, selection *goquery.Selection) {
 		MetinTrim := strings.TrimSpace(selection.Text())
 		MetinTrim = strings.ReplaceAll(MetinTrim, "\n", "")
 		MetinTrim = strings.ReplaceAll(MetinTrim, "\t", "")
 		MetinTrim = strings.ReplaceAll(MetinTrim, "\"", "")
 		metin = append(metin, MetinTrim)
-
 	})
 
 	hadis := Hadis{
-		Konu:    Baslık,
-		Numara:  babNo,
-		Metin:   metin,
-		HtmlTag: html,
+		Konu:   Baslık,
+		Numara: babNo,
+		Metin:  metin,
 	}
 	return hadis
 }
@@ -252,10 +236,9 @@ func verileriCek(id int, babNo int) Hadis {
 }*/
 
 func main() {
-	hadisler := make([]Hadis, 0)
+	var hadisler []Hadis
 	for i := 1; i < 99; i++ {
 		konuId := KonulariGettir(i)
-		fmt.Println(konuId)
 		for _, val := range konuId {
 			hadisler = append(hadisler, verileriCek(i, val))
 		}
