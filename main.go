@@ -182,6 +182,8 @@ func verileriCek(id int, babNo int) Hadis {
 		MetinTrim = strings.ReplaceAll(MetinTrim, "\n", "")
 		MetinTrim = strings.ReplaceAll(MetinTrim, "\t", "")
 		MetinTrim = strings.ReplaceAll(MetinTrim, "\"", "")
+		MetinTrim = strings.ReplaceAll(MetinTrim, "|b|", "<b>")
+		MetinTrim = strings.ReplaceAll(MetinTrim, "|/b|", "</b>")
 		metin = append(metin, MetinTrim)
 	})
 
@@ -243,12 +245,19 @@ func main() {
 			hadisler = append(hadisler, verileriCek(i, val))
 		}
 	}
+	hadislerJson, _ := json.Marshal(&hadisler)
 
-	if data, err := json.MarshalIndent(hadisler, " ", " "); err != nil {
-		log.Fatal(err)
-	} else {
-		ioutil.WriteFile("hadisler.json", data, 0644)
-	}
+	hadislerJson = bytes.Replace(hadislerJson, []byte("\\u003c"), []byte("<"), -1)
+	hadislerJson = bytes.Replace(hadislerJson, []byte("\\u003e"), []byte(">"), -1)
+	hadislerJson = bytes.Replace(hadislerJson, []byte("\\u0026"), []byte("&"), -1)
+
+	ioutil.WriteFile("hadisler.json", hadislerJson, 0644)
+
+	/*	if data, err := json.MarshalIndent(hadisler, " ", " "); err != nil {
+			log.Fatal(err)
+		} else {
+			ioutil.WriteFile("hadisler.json", data, 0644)
+		}*/
 
 	fmt.Println(len(hadisler))
 }
