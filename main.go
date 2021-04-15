@@ -216,48 +216,6 @@ func verileriCek(id int, babNo int) Hadis {
 	return hadis
 }
 
-/*func SayfaninMetniniGetir(konuId int) []Hadis {
-
-	url := fmt.Sprintf("http://islamilimleri.com/Ktphn/Kitablar/05/001/Turkce/%02d/000.htm", konuId)
-
-	resp, err := http.Get(url)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		log.Fatalf("status code error: %d %s", resp.StatusCode, resp.Status)
-	}
-
-	doc, err := goquery.NewDocumentFromReader(resp.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
-	icerik := doc.Find("#icerik").Text()
-
-	secimiBul := func(name string) string {
-		secim := ""
-		doc.Find("select[name=" + name + "] option").Each(func(i int, selection *goquery.Selection) {
-			if _, varMi := selection.Attr("selected"); varMi {
-				secim = selection.Text()
-			}
-		})
-		return secim
-	}
-	var Hadisler []Hadis
-	konu := secimiBul("CD71")
-	konular := KonulariGettir(konuId)
-	for _, deger := range konular {
-		Hadisler = append(Hadisler, Hadis{
-			Konu:   konu,
-			Numara: deger.Numara,
-			Metin:  icerik,
-		})
-	}
-	return Hadisler
-}*/
-
 func main() {
 	var hadisler []Hadis
 	for i := 1; i < 99; i++ {
