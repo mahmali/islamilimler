@@ -9,16 +9,12 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
-	"path"
 	"strconv"
+	"strings"
 )
 
 func KonulariGettir(konuId int) map[int]int {
 	url := fmt.Sprintf("http://islamilimleri.com/Ktphn/Kitablar/05/001/Turkce/%02d/000.htm", konuId)
-
-	fmt.Println(url)
-
 	resp, err := http.Get(url)
 	if err != nil {
 		log.Fatal(err)
@@ -27,7 +23,7 @@ func KonulariGettir(konuId int) map[int]int {
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		log.Fatalf("status code error: %d %s", resp.StatusCode, resp.Status)
-		return map[int]int{}
+
 	}
 
 	//charset := detectContentCharset(resp.Body)
@@ -44,7 +40,6 @@ func KonulariGettir(konuId int) map[int]int {
 	doc.Find("select[name=CD39] option").Each(func(i int, selection *goquery.Selection) {
 		fmt.Println(selection.Text())
 		if selection.Text() != "BAB" {
-
 			deger, err := strconv.Atoi(selection.Text())
 			if err != nil {
 				fmt.Println(err)
@@ -52,18 +47,11 @@ func KonulariGettir(konuId int) map[int]int {
 			m[i] = deger
 		}
 	})
-	//select listeki tüm o 001 002 vs geziyok
-	for val, _ := range m {
-		verileriCek(fmt.Sprintf("http://islamilimleri.com/Ktphn/Kitablar/05/001/Turkce/%02d/%03d.htm", konuId, val), konuId, val)
-	}
 	return m
 }
 
-func verileriCek(url string, konuId, babNo int) {
-	dir, _ := os.Getwd()
-	yol := path.Join(dir, "sonuc", strconv.Itoa(konuId))
-	os.MkdirAll(yol, 0777)
-	fmt.Println(url)
+func verileriCek(id int, babNo int) Hadis {
+	url := fmt.Sprintf("http://islamilimleri.com/Ktphn/Kitablar/05/001/Turkce/%02d/%03d.htm", id, babNo)
 	resp, err := http.Get(url)
 	if err != nil {
 		log.Fatal(err)
@@ -72,7 +60,7 @@ func verileriCek(url string, konuId, babNo int) {
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		log.Fatalf("status code error: %d %s", resp.StatusCode, resp.Status)
-		return
+
 	}
 
 	utfBody, err := iconv.NewReader(resp.Body, "windows-1254", "utf-8")
@@ -85,14 +73,32 @@ func verileriCek(url string, konuId, babNo int) {
 		log.Fatal(err)
 	}
 
-	doc.Find("td[valign=top]").Each(func(i int, selection *goquery.Selection) {
-		dosyaAdi := fmt.Sprintf("bab-%d.html", babNo)
-		file, _ := os.Create(path.Join(yol, dosyaAdi))
-		file.WriteString(selection.Text())
-	})
+	BaslıkBul := func(name string) string {
+		secim := ""
+		doc.Find("select[name=" + name + "] option").Each(func(i int, selection *goquery.Selection) {
+			if _, varMi := selection.Attr("selected"); varMi {
+				secim = selection.Text()
+			}
+		})
+		return secim
+	}
+	Baslık := BaslıkBul("CD71")
+	metin := doc.Find("td[valign=top]").Text()
+	metin = strings.TrimSuffix(metin, "\n")
+	metin = strings.TrimSpace(metin)
+	metin = strings.ReplaceAll(metin, "\n", "")
+	metin = strings.ReplaceAll(metin, "\t", "")
+	metin = strings.ReplaceAll(metin, "\"", "")
+
+	hadis := Hadis{
+		Konu:   Baslık,
+		Numara: babNo,
+		Metin:  metin,
+	}
+	return hadis
 }
 
-func SayfaninMetniniGetir(konuId int) []Hadis {
+/*func SayfaninMetniniGetir(konuId int) []Hadis {
 
 	url := fmt.Sprintf("http://islamilimleri.com/Ktphn/Kitablar/05/001/Turkce/%02d/000.htm", konuId)
 
@@ -127,22 +133,23 @@ func SayfaninMetniniGetir(konuId int) []Hadis {
 	for _, deger := range konular {
 		Hadisler = append(Hadisler, Hadis{
 			Konu:   konu,
-			Numara: deger,
+			Numara: deger.Numara,
 			Metin:  icerik,
 		})
 	}
 	return Hadisler
-}
+}*/
 
 func main() {
 	hadisler := make([]Hadis, 0)
-	for i := 1; i < 98; i++ {
-		KonulariGettir(i)
+	for i := 1; i < 99; i++ {
+		konuId := KonulariGettir(i)
+		fmt.Println(konuId)
+		for _, val := range konuId {
+			hadisler = append(hadisler, verileriCek(i, val))
+		}
 	}
-	/*for hno := 1; hno < 98; hno++ {
-		Thadis := SayfaninMetniniGetir(hno)
-		hadisler = append(hadisler, Thadis...)
-	}*/
+
 	if data, err := json.MarshalIndent(hadisler, " ", " "); err != nil {
 		log.Fatal(err)
 	} else {
