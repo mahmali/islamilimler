@@ -12,10 +12,12 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
-func KonulariGettir(konuId int) []int {
-	url := fmt.Sprintf("http://islamilimleri.com/Ktphn/Kitablar/05/045/Turkce/%02d/000.htm", konuId)
+func Baslikgettir(kitapNo int) string {
+
+	url := fmt.Sprintf("http://islamilimleri.com/Ktphn/Kitablar/05/%03d/Turkce/01/000.htm", kitapNo)
 	resp, err := http.Get(url)
 	if err != nil {
 		log.Fatal(err)
@@ -35,6 +37,47 @@ func KonulariGettir(konuId int) []int {
 	if err != nil {
 		log.Fatal(err)
 	}
+	var baslık string
+	doc.Find("[valign=top] h1").Each(func(i int, selection *goquery.Selection) {
+		baslık = selection.Text()
+	})
+	baslık = strings.ReplaceAll(baslık, "\n", "")
+	baslık = strings.ReplaceAll(baslık, "\t", "")
+	baslık = strings.ReplaceAll(baslık, "  ", "")
+	baslık = strings.TrimSpace(baslık)
+	fmt.Println(baslık)
+
+	return baslık
+}
+
+func KonulariGettir(kitapNo int, konuId int) []int {
+	url := fmt.Sprintf("http://islamilimleri.com/Ktphn/Kitablar/05/%03d/Turkce/%02d/000.htm", kitapNo, konuId)
+	resp, err := http.Get(url)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		log.Fatalf("status code error: %d %s", resp.StatusCode, resp.Status)
+	}
+
+	//charset := detectContentCharset(resp.Body)
+	utfBody, err := iconv.NewReader(resp.Body, "windows-1254", "utf-8")
+	if err != nil {
+		// handler error
+	}
+	doc, err := goquery.NewDocumentFromReader(utfBody)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var baslık string
+	doc.Find("[valign=top] h1").Each(func(i int, selection *goquery.Selection) {
+		baslık = selection.Text()
+	})
+	baslık = strings.ReplaceAll(baslık, "\n", "")
+	baslık = strings.ReplaceAll(baslık, "\t", "")
+	fmt.Println(baslık)
 	var m []int
 	doc.Find("select[name=CD39] option").Each(func(i int, selection *goquery.Selection) {
 		fmt.Println(selection.Text())
@@ -49,70 +92,8 @@ func KonulariGettir(konuId int) []int {
 	return m
 }
 
-/*func ElemanleriGettir() {
-	resp, err := http.Get("http://islamilimleri.com/Ktphn/Kitablar/05/004/Turkce/04/060.htm")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		log.Fatalf("status code error: %d %s", resp.StatusCode, resp.Status)
-
-	}
-
-	data, _ := ioutil.ReadAll(resp.Body)
-	yeni := make([]byte, len(data)*2)
-	iconv.Convert(data, yeni, "windows-1254", "utf-8")
-	yepyeni := bytes.TrimFunc(yeni, func(r rune) bool {
-		return r == 0
-	})
-	var sb strings.Builder
-	var yepYeniRune = []rune(string(yepyeni))
-	pkapanmali := false
-
-	for i, harf := range yepYeniRune {
-
-		if harf == '<' {
-			if yepYeniRune[i+1] == 'p' {
-				pkapanmali = true
-			}
-			if yepYeniRune[i+1] == '/' && yepYeniRune[i+2] == 'p' && yepYeniRune[i+3] == '>' {
-				pkapanmali = false
-			}
-
-			if pkapanmali && yepYeniRune[i+1] == '/' && yepYeniRune[i+2] == 't' && yepYeniRune[i+3] == 'd' && yepYeniRune[i+4] == '>' {
-				sb.WriteString("</p>")
-				pkapanmali = false
-			}
-		}
-
-		sb.WriteRune(harf)
-
-	}
-
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(sb.String()))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	doc.Find("#icerik div table tr td[valign=top] p").Each(func(i int, selection *goquery.Selection) {
-		fmt.Println(i, "----")
-		fmt.Println(selection.Html())
-		fmt.Println("---")
-	})
-
-	metin:=doc.Find("td[valign=top]").Text()
-	fmt.Println(metin)
-	doc.Find("#icerik").Each(func(i int, selection *goquery.Selection) {
-		fmt.Println(selection.Text())
-	})
-	metin=doc.Find("#icerik").Text()
-	fmt.Println(metin)
-}*/
-
-func verileriCek(id int, babNo int) Hadis {
-	url := fmt.Sprintf("http://islamilimleri.com/Ktphn/Kitablar/05/045/Turkce/%02d/%03d.htm", id, babNo)
+func verileriCek(id int, babNo int, sayfa int, kitapIsmi string) Hadis {
+	url := fmt.Sprintf("http://islamilimleri.com/Ktphn/Kitablar/05/%03d/Turkce/%02d/%03d.htm", sayfa, id, babNo)
 	resp, err := http.Get(url)
 	if err != nil {
 		log.Fatal(err)
@@ -204,11 +185,10 @@ func verileriCek(id int, babNo int) Hadis {
 		})
 
 	}
-
 	metinGetir("h3")
 	metinGetir("p")
 	hadis := Hadis{
-		Kitap:  "RİYÂZU’S-SÂLİHÎN",
+		Kitap:  kitapIsmi,
 		Konu:   Baslık,
 		Numara: babNo,
 		Metin:  metin,
@@ -217,20 +197,40 @@ func verileriCek(id int, babNo int) Hadis {
 }
 
 func main() {
+	var sayfalar = [][]int{
+		{1, 98},
+		{2, 57},
+		{3, 46},
+		{4, 42},
+		{5, 52},
+		{6, 38},
+		{7, 60},
+		{9, 24},
+		{19, 20},
+	}
 	var hadisler []Hadis
-	for i := 1; i < 2; i++ {
-		konuId := KonulariGettir(i)
-		for _, val := range konuId {
-			hadisler = append(hadisler, verileriCek(i, val))
+	var baslik string
+	var konuId []int
+	for i := 0; i < len(sayfalar); i++ {
+		babSayisi := sayfalar[i][1]
+		kitapNo := sayfalar[i][0]
+		baslik = Baslikgettir(kitapNo)
+		time.Sleep(1 * time.Second)
+		for j := 1; j <= babSayisi; j++ {
+			konuId = KonulariGettir(kitapNo, j)
+			for _, val := range konuId {
+				hadisler = append(hadisler, verileriCek(j, val, kitapNo, baslik))
+			}
 		}
 	}
+
 	hadislerJson, _ := json.MarshalIndent(&hadisler, "", " ")
 
 	hadislerJson = bytes.Replace(hadislerJson, []byte("\\u003c"), []byte("<"), -1)
 	hadislerJson = bytes.Replace(hadislerJson, []byte("\\u003e"), []byte(">"), -1)
 	hadislerJson = bytes.Replace(hadislerJson, []byte("\\u0026"), []byte("&"), -1)
 
-	ioutil.WriteFile("40hadis.json", hadislerJson, 0644)
+	ioutil.WriteFile("hadisler.json", hadislerJson, 0644)
 
 	fmt.Println(len(hadisler))
 }
