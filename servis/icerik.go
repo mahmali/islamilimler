@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/djimenez/iconv-go"
+	"github.com/muhammedaliakkaya/islamilimler/model"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"strings"
 )
 
-func VerileriCek(id int, babNo string, sayfa int, kitapIsmi string) model.Hadis {
+func VerileriCek(id int, babNo int, sayfa int, kitapIsmi string) model.Hadis {
 	url := fmt.Sprintf("http://islamilimleri.com/Ktphn/Kitablar/05/%03d/Arapca/%02d/%03d.htm", sayfa, id, babNo)
 	resp, err := http.Get(url)
 	if err != nil {
