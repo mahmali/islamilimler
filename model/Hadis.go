@@ -1,4 +1,4 @@
-package main
+package model
 
 type Hadis struct {
 	Kitap  string   `json:"kitap"`
