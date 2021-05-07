@@ -42,12 +42,48 @@ func KonulariGettir(kitapNo int, konuId int) []int {
 	doc.Find("select[name=CD63] option").Each(func(i int, selection *goquery.Selection) {
 		fmt.Println(selection.Text())
 		if selection.Text() != "باب" {
-			deger, err := strconv.Atoi(selection.Text())
-			if err != nil {
-				fmt.Println(err)
-			}
+			deger := LatinceKaraktereCevir(selection.Text())
 			m = append(m, deger)
 		}
 	})
 	return m
+}
+
+func LatinceKaraktereCevir(Degisecek string) int {
+	parcalanmis := strings.Split(Degisecek, "")
+	var LatinceHali []int
+	for _, deger := range parcalanmis {
+		switch deger {
+		case "٠":
+			deger = "0"
+		case "١":
+			deger = "1"
+		case "٢":
+			deger = "2"
+		case "۳":
+			deger = "٣"
+		case "٤":
+			deger = "4"
+		case "٥":
+			deger = "5"
+		case "٦":
+			deger = "6"
+		case "٧":
+			deger = "7"
+		case "٨":
+			deger = "8"
+		case "٩":
+			deger = "9"
+		default:
+			fmt.Println("hataki giris")
+		}
+
+		temp, err := strconv.Atoi(deger)
+		if err != nil {
+			fmt.Println(err)
+		}
+		LatinceHali = append(LatinceHali, temp)
+	}
+	dondecek := LatinceHali[2] + LatinceHali[1] + LatinceHali[0]
+	return dondecek
 }
